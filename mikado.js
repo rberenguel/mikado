@@ -1,4 +1,4 @@
-import { initHaptic, triggerHaptic, triggerHapticError } from "./haptic.js";
+import { initHaptic, triggerHaptic, triggerHapticAccept, triggerHapticError } from "./haptic.js";
 
 initHaptic();
 
@@ -60,6 +60,7 @@ timerDisplay.addEventListener("click", togglePause);
 pauseOverlay.addEventListener("click", togglePause); // Unpause by clicking overlay
 
 function startGame() {
+    cancelAnimationFrame(animationFrameId);
   triggerHaptic();
   isGameStarted = true;
   isPaused = false;
@@ -294,6 +295,7 @@ function checkMatch() {
   const isMatch = first.shape === second.shape;
 
   if (isMatch) {
+    triggerHapticAccept()
     score++;
     matchesThisLevel++;
     updateScoreDisplay();

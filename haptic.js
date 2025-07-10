@@ -66,6 +66,16 @@ export function triggerHaptic(duration = 5) {
   }
 }
 
+export function triggerHapticAccept() {
+  if (navigator.vibrate) {
+    navigator.vibrate([5, 20, 5]);
+  } else {
+    triggerHaptic();
+    setTimeout(() => triggerHaptic(), 100);
+  }
+}
+
+
 export function triggerHapticError() {
   if (navigator.vibrate) {
     navigator.vibrate([5, 20, 5]);
