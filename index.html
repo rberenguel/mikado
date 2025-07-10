@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mikado - 3D Matching Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Sixtyfour&display=swap"
+      rel="stylesheet"
+    />
+    <link href="style.css" rel="stylesheet" />
+    <link rel="manifest" href="./manifest.json" />
+  </head>
+  <body>
+    <div id="game-wrapper">
+      <div id="intro-screen" class="fullscreen-overlay">
+        <h1 class="title">Mikado</h1>
+        <p class="subtitle">Select the pair of matching shapes.</p>
+        <p class="cta">Tap to Start</p>
+      </div>
+
+      <div id="end-screen" class="fullscreen-overlay hidden">
+        <h1 class="title">Time's Up!</h1>
+        <p class="subtitle">
+          Your final score: <span id="final-score">0</span>
+        </p>
+        <p class="cta">Tap to Play Again</p>
+      </div>
+
+      <div id="pause-overlay" class="fullscreen-overlay hidden">
+        <p>Paused</p>
+        <p class="cta" style="font-size: 1rem; margin-top: 20px">
+          Tap anywhere to resume
+        </p>
+      </div>
+
+      <div id="game-ui" class="hidden">
+        <div id="top-bar">
+          <div id="level-display">L1</div>
+          <div id="timer">1:00</div>
+          <div id="score-display">0</div>
+        </div>
+        <div id="figures-grid"></div>
+      </div>
+    </div>
+
+    <script src="mikado.js"></script>
+  </body>
+</html>
