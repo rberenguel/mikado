@@ -1,7 +1,7 @@
 // --- CONFIGURATION ---
 const config = {
   rotationSpeed: 0.005,
-  vertexCount: 30, // Starting vertex count for Level 1
+  vertexCount: 14, // Starting vertex count for Level 1
   cameraDistance: 3.8,
   gameDuration: 60,
   matchesToLevelUp: 5,
