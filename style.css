@@ -26,20 +26,18 @@ body {
   max-width: 500px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
 }
 
 /* Intro and End Screens */
 .fullscreen-overlay {
   position: absolute;
-  top: 0;
+  top: 25vh;
   left: 0;
   width: 100%;
   height: 100%;
   background-color: var(--bg-color);
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   text-align: center;
   cursor: pointer;
@@ -128,6 +126,16 @@ body {
   border: 3px solid transparent;
   cursor: pointer;
   overflow: hidden;
+  opacity: 0; /* Start invisible */
+  transform: scale(0.8); /* Start slightly smaller */
+  transition:
+    opacity 0.3s ease-out,
+    transform 0.3s ease-out;
+}
+
+.figure-container.visible {
+  opacity: 1; /* This class will make the container fade in */
+  transform: scale(1);
 }
 
 canvas {
@@ -143,4 +151,28 @@ canvas {
   font-weight: bold;
   color: var(--text-color);
   text-align: center;
+}
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: scale(1) translate3d(-2px, 0, 0);
+  }
+  20%,
+  80% {
+    transform: scale(1) translate3d(4px, 0, 0);
+  }
+  30%,
+  50%,
+  70% {
+    transform: scale(1) translate3d(-12px, 0, 0);
+  }
+  40%,
+  60% {
+    transform: scale(1) translate3d(12px, 0, 0);
+  }
+}
+
+.shake {
+  animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }

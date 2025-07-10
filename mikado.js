@@ -1,17 +1,21 @@
+import { initHaptic, triggerHaptic, triggerHapticError } from "./haptic.js";
+
+initHaptic();
+
 // --- CONFIGURATION ---
 const config = {
-  rotationSpeed: 0.005,
+  rotationSpeed: 0.01,
   vertexCount: 14, // Starting vertex count for Level 1
-  cameraDistance: 3.8,
+  cameraDistance: 4.2,
   gameDuration: 60,
   matchesToLevelUp: 5,
   baseShapes: ["Box", "Sphere", "Octahedron", "Dodecahedron", "Icosahedron"],
 };
 
 const tubeSettings = {
-  default: { radius: 0.04 },
-  selected: { color: new THREE.Color(0x268bd2), radius: 0.06 },
-  incorrect: { color: new THREE.Color(0xdc322f), radius: 0.06 },
+  default: { radius: 0.08 },
+  selected: { color: new THREE.Color(0x268bd2), radius: 0.1 },
+  incorrect: { color: new THREE.Color(0xdc322f), radius: 0.1 },
 };
 
 const solarizedPalette = [
@@ -56,6 +60,7 @@ timerDisplay.addEventListener("click", togglePause);
 pauseOverlay.addEventListener("click", togglePause); // Unpause by clicking overlay
 
 function startGame() {
+  triggerHaptic();
   isGameStarted = true;
   isPaused = false;
   score = 0;
@@ -130,6 +135,10 @@ function setupRound() {
     );
     container.addEventListener("click", handleFigureClick);
   }
+  requestAnimationFrame(() => {
+    const allContainers = grid.querySelectorAll(".figure-container");
+    allContainers.forEach((container) => container.classList.add("visible"));
+  });
 }
 
 function initThreeScene(container, index, vertices, colors, initialRotation) {
@@ -238,6 +247,7 @@ function samplePointsOnSurface(geometry, pointCount) {
 }
 
 function handleFigureClick(event) {
+  triggerHaptic();
   if (isRoundOver || isPaused || selections.length >= 2) return;
   const container = event.currentTarget;
   const id = parseInt(container.dataset.id);
@@ -296,22 +306,57 @@ function checkMatch() {
       updateLevelDisplay();
     }
 
-    setTimeout(setupRound, 200);
+    const allContainers = grid.querySelectorAll(".figure-container");
+
+    // --- The Fix ---
+    // This function will set up the next round.
+    const setupNextRound = () => {
+      // Remove the listener to prevent it from firing again accidentally
+      allContainers[0].removeEventListener("transitionend", setupNextRound);
+      setupRound();
+    };
+
+    // Listen for the transition to end on the first container.
+    // When it finishes, it will call our function to set up the next round.
+    allContainers[0].addEventListener("transitionend", setupNextRound, {
+      once: true,
+    });
+
+    // Now, trigger the fade-out by removing the .visible class.
+    allContainers.forEach((container) => container.classList.remove("visible"));
   } else {
+    triggerHapticError();
     const firstFigure = figures[first.id];
     const secondFigure = figures[second.id];
+    const firstContainer = grid.children[first.id];
+    const secondContainer = grid.children[second.id];
+
+    programmaticShake(firstContainer);
+    programmaticShake(secondContainer);
+
     updateFigureLook(firstFigure, tubeSettings.incorrect);
     updateFigureLook(secondFigure, tubeSettings.incorrect);
 
     setTimeout(() => {
       if (figures[first.id] && figures[second.id]) {
         updateFigureLook(firstFigure, tubeSettings.default, true);
+      }
+      if (figures[second.id]) {
+        // Add a check in case it was cleared
         updateFigureLook(secondFigure, tubeSettings.default, true);
       }
       selections = [];
       isRoundOver = false;
     }, 500);
   }
+}
+
+function programmaticShake(element) {
+  element.classList.add("shake");
+  // Remove the class after the animation completes
+  setTimeout(() => {
+    element.classList.remove("shake");
+  }, 400); // Duration must match the animation in style.css
 }
 
 function startTimer() {
@@ -329,6 +374,7 @@ function startTimer() {
 }
 
 function togglePause() {
+  triggerHaptic();
   if (!isGameStarted || timeLeft <= 0) return;
   isPaused = !isPaused;
   pauseOverlay.classList.toggle("hidden", !isPaused);
