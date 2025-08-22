@@ -20,6 +20,10 @@ body {
   overflow: hidden;
 }
 
+.hidden {
+  display: none !important;
+}
+
 #game-wrapper {
   width: 100%;
   height: 100vh;
@@ -52,9 +56,10 @@ body {
 
 .title {
   font-family: "Sixtyfour", sans-serif;
-  font-size: 3.5rem;
+  font-size: 4.5rem;
   color: var(--highlight-color);
   margin: 0;
+  margin-bottom: 0.5em;
 }
 
 .subtitle {
@@ -175,4 +180,122 @@ canvas {
 
 .shake {
   animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.mode-selection {
+  display: flex;
+  justify-content: center;
+  gap: 15px; /* Adds space between the buttons */
+  margin: 20px 0;
+  flex-wrap: wrap; /* Allows buttons to wrap on smaller screens */
+}
+
+/* Base style for all new buttons */
+.mode-selection button,
+#n-back-controls button {
+  background-color: var(--highlight-color);
+  color: var(--bg-color);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-family: "Inter", sans-serif;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.mode-selection button:hover,
+#n-back-controls button:hover {
+  transform: scale(1.05);
+}
+
+/* Container for the N-Back level selector */
+.n-level-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.n-level-selector label {
+  font-size: 0.9rem;
+}
+
+.n-level-selector input {
+  width: 40px;
+  background-color: var(--container-bg);
+  border: 1px solid var(--text-color);
+  color: var(--text-color);
+  text-align: center;
+  font-size: 1rem;
+  border-radius: 5px;
+}
+
+/* N-Back specific layout */
+#n-back-game {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  height: 100%;
+}
+
+#n-back-container {
+  width: 70%; /* Makes the single figure larger */
+  max-width: 350px;
+  position: relative;
+}
+
+#n-back-seeding-overlay {
+  background-color: rgba(21, 21, 21, 0.8);
+  color: var(--highlight-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  border-radius: 12px;
+  z-index: 5;
+}
+
+#n-back-controls {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* For the response timer progress bar */
+#response-timer-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 8px;
+  width: 100%;
+  background-color: var(--highlight-color);
+  border-radius: 0.5em;
+  transform-origin: left;
+  transform: scaleX(1);
+}
+
+@keyframes correct-pulse {
+  0% {
+    transform: scale(1);
+    border-color: var(--green);
+  }
+  50% {
+    transform: scale(1.05);
+    border-color: var(--green);
+  }
+  100% {
+    transform: scale(1);
+    border-color: transparent;
+  }
+}
+
+.correct-match {
+  animation: correct-pulse 0.5s ease-in-out;
 }

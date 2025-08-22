@@ -10,9 +10,12 @@ The game is designed to be challenging. The figures are abstract, composed of a 
 
 ## How it Works
 
+### For pair matching
+
+1.  **Start:** The game begins with a title screen. Tapping the screen starts some timer.
+
 The core gameplay loop is as follows:
 
-1.  **Start:** The game begins with a title screen. Tapping the screen starts the timer and presents the first round.
 2.  **Matching:** The player is shown a 2x3 grid of 6 rotating figures. They must tap the two figures they believe are identical.
 3.  **Scoring & Leveling:**
     - A correct match instantly advances to the next round with a new set of figures.
@@ -21,6 +24,13 @@ The core gameplay loop is as follows:
 4.  **Leveling Up:** When a player levels up, the complexity of the figures increases by adding an extra line. The 60-second timer is also reset, rewarding the player for their speed and accuracy.
 5.  **Game Over:** The game ends when the 60-second timer runs out. The final score is displayed, and the player can choose to start over.
 6.  **Pause:** The player can tap the timer at any point to pause the game. Tapping the pause screen resumes the game.
+
+### For N-back
+
+2.  **Seeding:** `N` figures are going to be shown until you are asked to answer anything.
+3.  **Matching:** Once you can answer, you should remember the figure N steps before and decide if it's the same or not. You have a limited time to choose.
+4.  **Leveling Up:** As above.
+5.  **Game over, pause**: As above, although pause does not stop all transition timers. Assume your game might be over if you pause.
 
 ## Technologies & Acknowledgements
 

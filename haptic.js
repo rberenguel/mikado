@@ -75,7 +75,6 @@ export function triggerHapticAccept() {
   }
 }
 
-
 export function triggerHapticError() {
   if (navigator.vibrate) {
     navigator.vibrate([5, 20, 5]);

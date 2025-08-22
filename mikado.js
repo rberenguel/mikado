@@ -1,15 +1,22 @@
-import { initHaptic, triggerHaptic, triggerHapticAccept, triggerHapticError } from "./haptic.js";
+import {
+  initHaptic,
+  triggerHaptic,
+  triggerHapticAccept,
+  triggerHapticError,
+} from "./haptic.js";
 
 initHaptic();
 
 // --- CONFIGURATION ---
 const config = {
   rotationSpeed: 0.01,
-  vertexCount: 14, // Starting vertex count for Level 1
+  vertexCount: 14,
   cameraDistance: 4.2,
   gameDuration: 60,
   matchesToLevelUp: 5,
   baseShapes: ["Box", "Sphere", "Octahedron", "Dodecahedron", "Icosahedron"],
+  nBackValue: 2, // The "N" in N-Back
+  nBackTimeout: 4000, // millis
 };
 
 const tubeSettings = {
@@ -41,54 +48,109 @@ let timerId,
   isPaused,
   isGameStarted = false;
 let level, matchesThisLevel;
+let currentGameMode = "pair"; // 'pair' or 'n-back'
+
+let nBackHistory = [];
+let currentNBackData;
+let isNBackSeeding = false;
+let responseTimeoutId; // For the per-choice timer
 
 // --- DOM ELEMENTS ---
 const introScreen = document.getElementById("intro-screen");
 const endScreen = document.getElementById("end-screen");
 const gameUi = document.getElementById("game-ui");
 const pauseOverlay = document.getElementById("pause-overlay");
+// Game mode containers
+const pairMatchingContainer = document.getElementById("pair-matching-game");
+const nBackContainer = document.getElementById("n-back-game");
+// Specific game elements
 const grid = document.getElementById("figures-grid");
+const nBackFigureContainer = document.getElementById("n-back-figure");
+const nBackControls = document.getElementById("n-back-controls");
+const nBackSeedingOverlay = document.getElementById("n-back-seeding-overlay");
 const timerDisplay = document.getElementById("timer");
 const scoreDisplay = document.getElementById("score-display");
 const levelDisplay = document.getElementById("level-display");
 const finalScoreDisplay = document.getElementById("final-score");
+const startPairGameBtn = document.getElementById("start-pair-game-btn");
+const startNBackGameBtn = document.getElementById("start-nback-game-btn");
+const matchBtn = document.getElementById("match-btn");
+const noMatchBtn = document.getElementById("no-match-btn");
+const nLevelInput = document.getElementById("n-level-input");
+const seedingCountdownDisplay = document.getElementById("seeding-countdown");
+const responseTimerBar = document.getElementById("response-timer-bar");
 
 // --- INITIALIZATION ---
-introScreen.addEventListener("click", startGame);
-endScreen.addEventListener("click", startGame);
-timerDisplay.addEventListener("click", togglePause);
-pauseOverlay.addEventListener("click", togglePause); // Unpause by clicking overlay
 
-function startGame() {
-    cancelAnimationFrame(animationFrameId);
+startPairGameBtn.addEventListener("click", () => startGame("pair"));
+startNBackGameBtn.addEventListener("click", () => startGame("n-back"));
+endScreen.addEventListener("click", () => {
+  endScreen.classList.add("hidden");
+  introScreen.classList.remove("hidden");
+});
+timerDisplay.addEventListener("click", togglePause);
+pauseOverlay.addEventListener("click", togglePause);
+matchBtn.addEventListener("click", () => handleNBackChoice(true));
+noMatchBtn.addEventListener("click", () => handleNBackChoice(false));
+nLevelInput.addEventListener("input", () => {
+  let n = parseInt(nLevelInput.value);
+  if (isNaN(n) || n < 1) n = 1;
+  if (n > 9) n = 9; // Cap the max level
+  nLevelInput.value = n;
+  startNBackGameBtn.textContent = `${n}-Back Mode`;
+});
+function startGame(mode) {
+  cancelAnimationFrame(animationFrameId);
   triggerHaptic();
+  currentGameMode = mode;
   isGameStarted = true;
   isPaused = false;
   score = 0;
   level = 1;
   matchesThisLevel = 0;
-  config.vertexCount = config.vertexCount;
+  config.vertexCount = 14;
   timeLeft = config.gameDuration;
+
   introScreen.classList.add("hidden");
   endScreen.classList.add("hidden");
   pauseOverlay.classList.add("hidden");
   gameUi.classList.remove("hidden");
+
   updateScoreDisplay();
   updateLevelDisplay();
-  startTimer();
-  setupRound();
+
+  if (currentGameMode === "pair") {
+    nBackContainer.classList.add("hidden");
+    pairMatchingContainer.classList.remove("hidden");
+    setupPairMatchingRound();
+  } else {
+    config.nBackValue = parseInt(nLevelInput.value);
+    pairMatchingContainer.classList.add("hidden");
+    nBackContainer.classList.remove("hidden");
+    nBackHistory = [];
+    isNBackSeeding = true; // *** FIX: Start in seeding mode
+    nBackControls.classList.add("hidden");
+    nBackSeedingOverlay.classList.remove("hidden");
+    nBackSeedingOverlay.classList.remove("hidden");
+    responseTimerBar.classList.remove("hidden");
+    responseTimerBar.style.transition = "none";
+    responseTimerBar.style.transform = "scaleX(1)";
+    // Force a reflow
+    void responseTimerBar.offsetWidth;
+    responseTimerBar.style.transition = `transform ${config.nBackTimeout / 1000}s linear`;
+    responseTimerBar.style.transform = "scaleX(0)";
+    presentNextNBackFigure();
+  }
   animate();
 }
 
-function setupRound() {
+function setupPairMatchingRound() {
   clearGrid();
   isRoundOver = false;
 
   const numLines = config.vertexCount / 2;
   const paletteSize = solarizedPalette.length;
   const roundColors = [];
-
-  // Loop to build the color palette for the round, repeating if necessary
   for (let i = 0; i < numLines; i++) {
     roundColors.push(solarizedPalette[i % paletteSize]);
   }
@@ -103,13 +165,12 @@ function setupRound() {
 
   const shapeToDuplicate =
     figureData[Math.floor(Math.random() * figureData.length)];
-
   const roundFigures = shuffleArray([
     ...figureData,
     {
       ...shapeToDuplicate,
-      vertices: shapeToDuplicate.vertices.slice(),
-      colors: shapeToDuplicate.colors.slice(),
+      vertices: [...shapeToDuplicate.vertices],
+      colors: [...shapeToDuplicate.colors],
     },
   ]).map((data) => ({
     ...data,
@@ -134,12 +195,253 @@ function setupRound() {
       data.colors,
       data.initialRotation,
     );
-    container.addEventListener("click", handleFigureClick);
+    container.addEventListener("click", handlePairFigureClick);
   }
   requestAnimationFrame(() => {
-    const allContainers = grid.querySelectorAll(".figure-container");
-    allContainers.forEach((container) => container.classList.add("visible"));
+    grid
+      .querySelectorAll(".figure-container")
+      .forEach((c) => c.classList.add("visible"));
   });
+}
+
+function handlePairFigureClick(event) {
+  triggerHaptic();
+  if (isRoundOver || isPaused || selections.length >= 2) return;
+  const container = event.currentTarget;
+  const id = parseInt(container.dataset.id);
+  if (selections.some((sel) => sel.id === id)) return;
+
+  updateFigureLook(figures[id], tubeSettings.selected);
+  selections.push({ shape: container.dataset.shape, id: id });
+  if (selections.length === 2) {
+    checkPairMatch();
+  }
+}
+
+function checkPairMatch() {
+  isRoundOver = true;
+  const [first, second] = selections;
+  const isMatch = first.shape === second.shape;
+
+  if (isMatch) {
+    triggerHapticAccept();
+    score++;
+    matchesThisLevel++;
+    updateScoreDisplay();
+
+    // --- CHANGE STARTS HERE ---
+
+    // Get the container elements for the matched pair
+    const firstContainer = grid.children[first.id];
+    const secondContainer = grid.children[second.id];
+
+    // Apply the pulse animation
+    firstContainer.classList.add("correct-match");
+    secondContainer.classList.add("correct-match");
+
+    // After the pulse animation finishes, start the fade-out for the next round
+    setTimeout(() => {
+      if (matchesThisLevel >= config.matchesToLevelUp) {
+        level++;
+        matchesThisLevel = 0;
+        config.vertexCount += 2;
+        timeLeft = Math.min(timeLeft + 5, config.gameDuration); // Time bonus
+        updateLevelDisplay();
+      }
+
+      const allContainers = grid.querySelectorAll(".figure-container");
+      const setupNext = () => {
+        allContainers[0].removeEventListener("transitionend", setupNext);
+        setupPairMatchingRound();
+      };
+      allContainers[0].addEventListener("transitionend", setupNext, {
+        once: true,
+      });
+      allContainers.forEach((container) =>
+        container.classList.remove("visible"),
+      );
+    }, 500); // This delay should match the animation duration (0.5s)
+
+    // --- CHANGE ENDS HERE ---
+  } else {
+    // ... (the else block for incorrect matches remains unchanged) ...
+    triggerHapticError();
+    const [s1, s2] = selections;
+    const firstFig = figures[s1.id],
+      secondFig = figures[s2.id];
+    const firstCont = grid.children[s1.id],
+      secondCont = grid.children[s2.id];
+    programmaticShake(firstCont);
+    programmaticShake(secondCont);
+    updateFigureLook(firstFig, tubeSettings.incorrect);
+    updateFigureLook(secondFig, tubeSettings.incorrect);
+    setTimeout(() => {
+      if (firstFig) updateFigureLook(firstFig, tubeSettings.default, true);
+      if (secondFig) updateFigureLook(secondFig, tubeSettings.default, true);
+      selections = [];
+      isRoundOver = false;
+    }, 500);
+  }
+}
+
+// ==========================================
+// --- N-BACK MODE LOGIC (New code) ---
+// ==========================================
+
+function presentNextNBackFigure() {
+  clearTimeout(responseTimeoutId); // Clear any previous response timer
+  clearGrid(true);
+  isRoundOver = false;
+
+  // *** FIX: Check if we are done seeding
+  if (isNBackSeeding && nBackHistory.length >= config.nBackValue) {
+    isNBackSeeding = false;
+    nBackSeedingOverlay.classList.add("hidden");
+    nBackControls.classList.remove("hidden");
+    startTimer();
+  }
+
+  const shouldBeMatch = !isNBackSeeding && Math.random() < 0.4;
+  let shapeToDisplay;
+
+  if (shouldBeMatch) {
+    shapeToDisplay =
+      nBackHistory[nBackHistory.length - config.nBackValue].shapeName;
+  } else {
+    const avoidShape = isNBackSeeding
+      ? null
+      : nBackHistory[nBackHistory.length - config.nBackValue].shapeName;
+    const possibleShapes = config.baseShapes.filter((s) => s !== avoidShape);
+    shapeToDisplay =
+      possibleShapes[Math.floor(Math.random() * possibleShapes.length)];
+  }
+
+  const baseGeometry = createBaseGeometry(shapeToDisplay);
+  const vertices = samplePointsOnSurface(baseGeometry, config.vertexCount);
+  const colors = shuffleArray([...solarizedPalette]).slice(
+    0,
+    config.vertexCount / 2,
+  );
+  baseGeometry.dispose();
+
+  currentNBackData = {
+    shapeName: shapeToDisplay,
+    isMatch:
+      !isNBackSeeding &&
+      nBackHistory[nBackHistory.length - config.nBackValue].shapeName ===
+        shapeToDisplay,
+  };
+
+  nBackFigureContainer.dataset.shape = shapeToDisplay;
+  initThreeScene(
+    nBackFigureContainer,
+    0,
+    vertices,
+    colors,
+    new THREE.Euler(
+      Math.random() * 2 * Math.PI,
+      Math.random() * 2 * Math.PI,
+      Math.random() * 2 * Math.PI,
+    ),
+  );
+  requestAnimationFrame(() => nBackFigureContainer.classList.add("visible"));
+
+  nBackHistory.push({ shapeName: shapeToDisplay });
+  if (nBackHistory.length > config.nBackValue + 2) nBackHistory.shift();
+  // --- Start the per-response timer ---
+  responseTimerBar.classList.remove("hidden");
+  responseTimerBar.style.transition = "none";
+  responseTimerBar.style.transform = "scaleX(1)";
+  // Force a reflow
+  void responseTimerBar.offsetWidth;
+  responseTimerBar.style.transition = `transform ${config.nBackTimeout / 1000}s linear`;
+  responseTimerBar.style.transform = "scaleX(0)";
+  if (isNBackSeeding) {
+    setTimeout(presentNextNBackFigure, config.nBackTimeout);
+  } else {
+    responseTimeoutId = setTimeout(() => {
+      // Time's up! Count as an error and move on.
+      triggerHapticError();
+      programmaticShake(nBackFigureContainer);
+      presentNextNBackFigure();
+    }, config.nBackTimeout);
+  }
+}
+
+function handleNBackChoice(userChoseMatch) {
+  if (isPaused || isRoundOver || isNBackSeeding) return;
+
+  // --- Clear the response timer immediately ---
+  clearTimeout(responseTimeoutId);
+  responseTimerBar.classList.add("hidden");
+
+  isRoundOver = true;
+  const correct = userChoseMatch === currentNBackData.isMatch;
+
+  if (correct) {
+    triggerHapticAccept();
+    score++;
+    matchesThisLevel++;
+    nBackFigureContainer.classList.add("correct-match");
+    // Remove it after the animation is done to allow it to be re-added later
+    setTimeout(() => {
+      nBackFigureContainer.classList.remove("correct-match");
+    }, 500); // Duration of the animation
+    if (matchesThisLevel >= config.matchesToLevelUp) {
+      level++;
+      matchesThisLevel = 0;
+      config.vertexCount = Math.min(24, config.vertexCount + 2);
+      updateLevelDisplay();
+    }
+  } else {
+    triggerHapticError();
+    programmaticShake(nBackFigureContainer);
+  }
+
+  updateScoreDisplay();
+
+  setTimeout(() => {
+    presentNextNBackFigure();
+  }, 300); // Brief delay before the next item
+}
+
+// ================================
+// --- SHARED HELPER FUNCTIONS ---
+// ================================
+
+// ... (initThreeScene, createCapsule, createBaseGeometry, samplePointsOnSurface, etc.)
+// ... (updateFigureLook, programmaticShake)
+// ... (startTimer, togglePause, endGame, updateTimerDisplay, updateScoreDisplay, etc.)
+// ... (animate, shuffleArray, resize listener)
+
+// --- MODIFIED clearGrid to handle both modes ---
+function clearGrid(isNBack = false) {
+  if (isNBack) {
+    nBackFigureContainer.innerHTML = "";
+  } else {
+    grid.innerHTML = "";
+  }
+  selections = [];
+  scenes.forEach((scene) => {
+    // ... (rest of your cleanup code is fine)
+    while (scene.children.length > 0) {
+      const obj = scene.children[0];
+      scene.remove(obj);
+      if (obj.isMesh || obj.isGroup) {
+        obj.traverse((child) => {
+          if (child.isMesh) {
+            child.geometry.dispose();
+            child.material.dispose();
+          }
+        });
+      }
+    }
+  });
+  renderers.forEach((renderer) => renderer.dispose());
+  scenes = [];
+  cameras = [];
+  renderers = [];
+  figures = [];
 }
 
 function initThreeScene(container, index, vertices, colors, initialRotation) {
@@ -295,7 +597,7 @@ function checkMatch() {
   const isMatch = first.shape === second.shape;
 
   if (isMatch) {
-    triggerHapticAccept()
+    triggerHapticAccept();
     score++;
     matchesThisLevel++;
     updateScoreDisplay();
@@ -416,30 +718,6 @@ function animate() {
       renderers[i].render(scenes[i], cameras[i]);
     }
   }
-}
-
-function clearGrid() {
-  grid.innerHTML = "";
-  selections = [];
-  scenes.forEach((scene) => {
-    while (scene.children.length > 0) {
-      const obj = scene.children[0];
-      scene.remove(obj);
-      if (obj.isMesh || obj.isGroup) {
-        obj.traverse((child) => {
-          if (child.isMesh) {
-            child.geometry.dispose();
-            child.material.dispose();
-          }
-        });
-      }
-    }
-  });
-  renderers.forEach((renderer) => renderer.dispose());
-  scenes.length = 0;
-  cameras.length = 0;
-  renderers.length = 0;
-  figures.length = 0;
 }
 
 function shuffleArray(array) {
