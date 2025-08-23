@@ -78,7 +78,6 @@ const startNBackGameBtn = document.getElementById("start-nback-game-btn");
 const matchBtn = document.getElementById("match-btn");
 const noMatchBtn = document.getElementById("no-match-btn");
 const nLevelInput = document.getElementById("n-level-input");
-const seedingCountdownDisplay = document.getElementById("seeding-countdown");
 const responseTimerBar = document.getElementById("response-timer-bar");
 
 // --- INITIALIZATION ---
@@ -122,10 +121,13 @@ function startGame(mode) {
   updateLevelDisplay();
 
   if (currentGameMode === "pair") {
+    timeLeft = 2 * config.gameDuration
+    startTimer();
     nBackContainer.classList.add("hidden");
     pairMatchingContainer.classList.remove("hidden");
     setupPairMatchingRound();
   } else {
+    config.vertexCount = config.vertexCount - 6
     config.nBackValue = parseInt(nLevelInput.value);
     pairMatchingContainer.classList.add("hidden");
     nBackContainer.classList.remove("hidden");
@@ -244,7 +246,7 @@ function checkPairMatch() {
         level++;
         matchesThisLevel = 0;
         config.vertexCount += 2;
-        timeLeft = Math.min(timeLeft + 5, config.gameDuration); // Time bonus
+        timeLeft = timeLeft + config.gameDuration
         updateLevelDisplay();
       }
 

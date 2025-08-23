@@ -1,4 +1,4 @@
-const CACHE_NAME = "mikado-cache-v0.2.1";
+const CACHE_NAME = "mikado-cache-v0.2.2";
 const CACHE_FILES = [
   './fonts/InterDisplay-Bold.woff2',
   './fonts/InterDisplay-Italic.woff2',
